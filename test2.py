@@ -18,8 +18,8 @@ from sklearn.metrics import accuracy_score
 import matplotlib.dates as mdates
 import dataprocess as dp
 import histogram as hist
-#from DNN import *
-#from keras.models import Sequential
+from DNN import *
+from keras.models import Sequential
 #import LWLinear as LW
 
 # read in dataset
@@ -37,7 +37,7 @@ target_CO = target_CO.set_index('DT')
 feature_CO, target_CO = dp.delMissing(feature_CO, target_CO)   #deal with missing data
 #feature_CO, target_CO = dp.sort(feature_CO, target_CO, 'RH')   #sort by RH
 
-'''
+
 skf = sel.KFold(n_splits=5)
 MAE = MBE = RMSE = RE = 0
 res = []
@@ -59,8 +59,8 @@ for train_index, test_index in skf.split(param, target):
     mbe_score = dp.MBE(test_target, test_target_pred)
     relative_error = dp.relativeError(test_target, test_target_pred)
     print rmse_score, mae_score, mbe_score, relative_error
-'''
 
+'''
 for i in range (1,9):
 
     left, right = 10*i, 10*(i+1)
@@ -108,7 +108,7 @@ for i in range (1,9):
         RE = RE + relative_error
     res.append([MAE/5.0,  MBE/5.0, RMSE/5.0, RE/5.0])   # record the average score
     print res, size
-
+'''
 '''
 res = []
 for c in range(3):
