@@ -8,6 +8,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.linear_model import RidgeCV
 from sklearn.linear_model import ElasticNetCV
 from sklearn.linear_model import ElasticNet
+from sklearn.linear_model import BayesianRidge
+from sklearn.kernel_ridge import KernelRidge
 from sklearn import preprocessing
 import sklearn.model_selection as sel
 from sklearn import metrics
@@ -18,13 +20,13 @@ import dataprocess as dp
 import histogram as hist
 #from DNN import *
 #from keras.models import Sequential
-import LWLinear as LW
+#import LWLinear as LW
 
 # read in dataset
 dataset  = pd.read_excel('F:\Python projects\gas-dataset-regression\AirQualityUCI\AirQualityUCI.xlsx')
 
 '''prepare data for training and test.'''
-featureset = ['DT','PT08.S1(CO)', 'PT08.S2(NMHC)','T', 'PT08.S3(NOx)', 'PT08.S4(NO2)', 'RH']
+featureset = ['DT','PT08.S1(CO)', 'PT08.S2(NMHC)','T', 'PT08.S3(NOx)', 'PT08.S4(NO2)']
 target = ['DT','CO(GT)']
 d_t = dp.features(dataset, ['DT'])
 feature_CO = dp.features(dataset, featureset)
@@ -33,7 +35,7 @@ feature_CO['DT'], target_CO['DT'] = pd.to_datetime(feature_CO['DT']), pd.to_date
 feature_CO = feature_CO.set_index('DT')
 target_CO = target_CO.set_index('DT')
 feature_CO, target_CO = dp.delMissing(feature_CO, target_CO)   #deal with missing data
-feature_CO, target_CO = dp.sort(feature_CO, target_CO, 'RH')   #sort by RH
+#feature_CO, target_CO = dp.sort(feature_CO, target_CO, 'RH')   #sort by RH
 
 '''
 skf = sel.KFold(n_splits=5)
@@ -62,19 +64,18 @@ for train_index, test_index in skf.split(param, target):
 for i in range (1,9):
 
     left, right = 10*i, 10*(i+1)
-    #reg_feature_CO, reg_target_CO = feature_CO.iloc[left:right :], target_CO.iloc[left:right, :]   #choose pieces of data
-    data = pd.concat([feature_CO, target_CO],axis = 1)
-    data = data.loc[(data['RH']>= left) & (data['RH']<= right)]
-    reg_feature_CO, reg_target_CO= data[feature_CO.columns], data[target_CO.columns]   #choose pieces of data
+    #data = pd.concat([feature_CO, target_CO],axis = 1)
+    #data = data.loc[(data['RH']>= left) & (data['RH']<= right)]
+    #reg_feature_CO, reg_target_CO= data[feature_CO.columns], data[target_CO.columns]   #choose pieces of data
 
-    sensor = reg_feature_CO['PT08.S1(CO)']
-    sensitivity = sensor.std()
+    #sensor = reg_feature_CO['PT08.S1(CO)']
+    #sensitivity = sensor.std()
 
     #if i <= 9: reg_feature_CO, reg_target_CO = feature_CO['2004-%d' %(i+3)], target_CO['2004-%d' %(i+3)]
     #else: reg_feature_CO, reg_target_CO = feature_CO['2005-%d' %(i-9)], target_CO['2005-%d' %(i-9)]
-    size = len(reg_feature_CO)
-    param = dp.polynomia(reg_feature_CO)
-    target = np.array(reg_target_CO)    #change into ndarray
+    size = len(feature_CO)
+    param = dp.polynomia(feature_CO, a=1)
+    target = np.array(target_CO)    #change into ndarray
     target = np.reshape(target, (len(target),))    #change into (len,) instead of (len, 1)
 
     skf = sel.KFold(n_splits =5)
@@ -89,7 +90,10 @@ for i in range (1,9):
         #reg = ElasticNetCV(cv = c+2, l1_ratio= r/10.0)
         #reg = LinearRegression()
         reg = LassoCV(normalize = True , max_iter = 8000)
+        #reg= BayesianRidge(normalize = True)
+        #reg = KernelRidge(alpha=1.0, degree = 1)
         test_target_pred = reg.fit(train_param, train_target).predict(test_param)   # generate prediction results on test set
+        print reg.alpha_
 
         # estimate the performance of regression
         #test_target_pred = preprocessing.scale(test_target_pred)
@@ -103,7 +107,7 @@ for i in range (1,9):
         RMSE = rmse_score + RMSE
         RE = RE + relative_error
     res.append([MAE/5.0,  MBE/5.0, RMSE/5.0, RE/5.0])   # record the average score
-    print res, size, sensitivity
+    print res, size
 
 '''
 res = []

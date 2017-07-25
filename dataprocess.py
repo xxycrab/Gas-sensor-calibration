@@ -25,8 +25,8 @@ def delMissing(featureset, target):
     featureset, target = data[featureset.columns], data[target.columns]
     return featureset, target
 
-def polynomia(dataset):
-    poly = preprocessing.PolynomialFeatures(2)
+def polynomia(dataset, a= 2):
+    poly = preprocessing.PolynomialFeatures(a)
     dataset = poly.fit_transform(dataset)
     return dataset
 
