@@ -24,8 +24,6 @@ class DNN:
 
     def train(self, feature, target, test_feature, test_target, layer = 3):
         target_data = np.concatenate((target, test_target))
-        std = target_data.std()
-        mean = target_data.mean()
         feature = preprocessing.scale(feature)
         #target = preprocessing.scale(target)
         test_feature= preprocessing.scale(test_feature)
@@ -39,7 +37,7 @@ class DNN:
 
         model.add(Dense(units = hidden_width, input_dim= ndim, activation=tansig, init = 'normal'))
         #model.add(Dropout(dropout_rate))
-        #model.add(Dense(hidden_width, activation='linear'))
+        model.add(Dense(units= hidden_width, input_dim=ndim, activation=tansig, init='normal'))
         #model.add(Dropout(dropout_rate))
         #model.add(Dense(hidden_width, activation='sigmoid'))
         #model.add(Dropout(dropout_rate))
@@ -47,8 +45,8 @@ class DNN:
 
         sgd = SGD(lr=0.001, decay=1e-6, momentum=0.9, nesterov=True)
         model.compile(loss='mean_squared_error', optimizer=sgd, metrics=['accuracy'])
-        model.fit(feature, target, epochs=5000, batch_size= batch_size, verbose=0)
-        pred = model.predict(test_feature)+0.21#*std+ mean
+        model.fit(feature, target, epochs=8000, batch_size= batch_size, verbose=0)
+        pred = model.predict(test_feature)
         return pred
 
     def prediction(self, testset):

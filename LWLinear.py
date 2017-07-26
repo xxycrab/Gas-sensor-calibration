@@ -1,11 +1,11 @@
 from numpy import *
 
-def lwlr(point, y, k, weights):
-
+def lwlr(testPoint, X, y, k):
+    xMat, yMat = mat(X), mat(y).T
     m = xMat.shape[0]
     weights = mat(eye((m)))
     for i in range(m):
-        diffMat = point - xMat[i, :]
+        diffMat = testPoint - xMat[i, :]
         weights[i, i] = exp(diffMat * diffMat.T / (-2.0 * k ** 2))
     xTx = xMat.T * (weights * xMat)
     theta = xTx.T * (xMat.T * (weights * yMat))

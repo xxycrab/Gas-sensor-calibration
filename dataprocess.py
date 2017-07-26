@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from sklearn import preprocessing
 from sklearn import metrics
+from sklearn.linear_model import LinearRegression
 
 def features(dataset, featureset):
     for feature in featureset:
@@ -58,3 +59,26 @@ def sort(featureset, target, pivot):
     data = data.sort_values(by = [pivot])
     featureset, target = data[featureset.columns], data[target.columns]
     return featureset, target
+
+def pretraining(X, y):
+    linear = LinearRegression()
+    model = linear.fit(X,y)
+    pred = model.predict(X)
+    return pred, model
+
+def weights(X,y):
+    weights = []
+    pre = pretraining(X,y)
+    for i in range(len(y)):
+        weights.append(np.exp(-abs((y[i] - pre[i]))/0.1))
+    return weights
+
+def calibrate(X,y):
+    X_new = X[:,1]
+    y_new = y.copy().T
+    y_new = np.reshape(y_new,(len(y_new),1))
+
+    calibration, model = pretraining(y_new, X_new)
+    for i in range(len(calibration)):
+        X[i, 1] = calibration[i]
+    return X, model

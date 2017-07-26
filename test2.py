@@ -10,7 +10,10 @@ from sklearn.linear_model import ElasticNetCV
 from sklearn.linear_model import ElasticNet
 from sklearn.linear_model import BayesianRidge
 from sklearn.kernel_ridge import KernelRidge
+from sklearn.svm import SVR, LinearSVR
 from sklearn import preprocessing
+from sklearn.ensemble import BaggingRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 import sklearn.model_selection as sel
 from sklearn import metrics
 #import histogram as hist
@@ -18,8 +21,8 @@ from sklearn.metrics import accuracy_score
 import matplotlib.dates as mdates
 import dataprocess as dp
 import histogram as hist
-from DNN import *
-from keras.models import Sequential
+#from DNN import *
+#from keras.models import Sequential
 #import LWLinear as LW
 
 # read in dataset
@@ -27,7 +30,7 @@ dataset  = pd.read_excel('F:\Python projects\gas-dataset-regression\AirQualityUC
 
 '''prepare data for training and test.'''
 featureset = ['DT','PT08.S1(CO)', 'PT08.S2(NMHC)','T', 'PT08.S3(NOx)', 'PT08.S4(NO2)']
-target = ['DT','CO(GT)']
+target = ['DT', 'CO(GT)']
 d_t = dp.features(dataset, ['DT'])
 feature_CO = dp.features(dataset, featureset)
 target_CO = dp.target(dataset, target)
@@ -37,12 +40,11 @@ target_CO = target_CO.set_index('DT')
 feature_CO, target_CO = dp.delMissing(feature_CO, target_CO)   #deal with missing data
 #feature_CO, target_CO = dp.sort(feature_CO, target_CO, 'RH')   #sort by RH
 
-
 skf = sel.KFold(n_splits=5)
 MAE = MBE = RMSE = RE = 0
 res = []
 # print dp.baseline(taarget, reg_feature_CO['PT08.S1(CO)'])
-
+'''
 param = np.array(feature_CO)
 target = np.array(target_CO)
 target = np.reshape(target, (len(target),))
@@ -59,8 +61,8 @@ for train_index, test_index in skf.split(param, target):
     mbe_score = dp.MBE(test_target, test_target_pred)
     relative_error = dp.relativeError(test_target, test_target_pred)
     print rmse_score, mae_score, mbe_score, relative_error
-
 '''
+
 for i in range (1,9):
 
     left, right = 10*i, 10*(i+1)
@@ -74,7 +76,8 @@ for i in range (1,9):
     #if i <= 9: reg_feature_CO, reg_target_CO = feature_CO['2004-%d' %(i+3)], target_CO['2004-%d' %(i+3)]
     #else: reg_feature_CO, reg_target_CO = feature_CO['2005-%d' %(i-9)], target_CO['2005-%d' %(i-9)]
     size = len(feature_CO)
-    param = dp.polynomia(feature_CO, a=1)
+    #param = dp.polynomia(feature_CO, a=2)
+    param = np.array(feature_CO)
     target = np.array(target_CO)    #change into ndarray
     target = np.reshape(target, (len(target),))    #change into (len,) instead of (len, 1)
 
@@ -85,6 +88,8 @@ for i in range (1,9):
     for train_index, test_index in skf.split(param, target):
         train_param, test_param = param[train_index], param[test_index]
         train_target, test_target = target[train_index], target[test_index]
+        train_param, model = dp.calibrate(train_param, train_target)
+        train_param, test_param = dp.polynomia(train_param, 2), dp.polynomia(test_param, 2)
 
         # regressiong
         #reg = ElasticNetCV(cv = c+2, l1_ratio= r/10.0)
@@ -92,8 +97,15 @@ for i in range (1,9):
         reg = LassoCV(normalize = True , max_iter = 8000)
         #reg= BayesianRidge(normalize = True)
         #reg = KernelRidge(alpha=1.0, degree = 1)
+        #reg = SVR(kernel = 'poly')
+        #reg = BaggingRegressor(LassoCV(max_iter=5000, normalize= True), max_samples=0.2)
+        #lasso = LassoCV()
+        #reg = GradientBoostingRegressor(loss = 'lad', learning_rate = 0.1, n_estimators=200)
+
+        #weights = dp.weights(train_param, train_target)
+        #for i in range(len(weights)):
+         #   train_param[i] = weights[i]* train_param[i]
         test_target_pred = reg.fit(train_param, train_target).predict(test_param)   # generate prediction results on test set
-        print reg.alpha_
 
         # estimate the performance of regression
         #test_target_pred = preprocessing.scale(test_target_pred)
@@ -108,7 +120,7 @@ for i in range (1,9):
         RE = RE + relative_error
     res.append([MAE/5.0,  MBE/5.0, RMSE/5.0, RE/5.0])   # record the average score
     print res, size
-'''
+
 '''
 res = []
 for c in range(3):
