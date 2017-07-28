@@ -1,15 +1,11 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from sklearn.linear_model import LassoCV
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import LinearRegression
-from sklearn.linear_model import RidgeCV
 from sklearn.linear_model import ElasticNetCV
-from sklearn.linear_model import ElasticNet
-from sklearn.linear_model import BayesianRidge
 from sklearn.kernel_ridge import KernelRidge
+from sklearn.linear_model import ARDRegression
 from sklearn.svm import SVR, LinearSVR
 from sklearn import preprocessing
 from sklearn.ensemble import BaggingRegressor
@@ -17,10 +13,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 import sklearn.model_selection as sel
 from sklearn import metrics
 #import histogram as hist
-from sklearn.metrics import accuracy_score
-import matplotlib.dates as mdates
 import dataprocess as dp
-import histogram as hist
 #from DNN import *
 #from keras.models import Sequential
 #import LWLinear as LW
@@ -45,6 +38,7 @@ MAE = MBE = RMSE = RE = 0
 res = []
 # print dp.baseline(taarget, reg_feature_CO['PT08.S1(CO)'])
 '''
+#try on Dnn
 param = np.array(feature_CO)
 target = np.array(target_CO)
 target = np.reshape(target, (len(target),))
@@ -76,8 +70,8 @@ for i in range (1,9):
     #if i <= 9: reg_feature_CO, reg_target_CO = feature_CO['2004-%d' %(i+3)], target_CO['2004-%d' %(i+3)]
     #else: reg_feature_CO, reg_target_CO = feature_CO['2005-%d' %(i-9)], target_CO['2005-%d' %(i-9)]
     size = len(feature_CO)
-    param = dp.polynomia(feature_CO, a=2)
-    #param = np.array(feature_CO)
+    #param = dp.polynomia(feature_CO, a=2)
+    param = np.array(feature_CO)
     target = np.array(target_CO)    #change into ndarray
     target = np.reshape(target, (len(target),))    #change into (len,) instead of (len, 1)
 
@@ -88,28 +82,27 @@ for i in range (1,9):
     for train_index, test_index in skf.split(param, target):
         train_param, test_param = param[train_index], param[test_index]
         train_target, test_target = target[train_index], target[test_index]
-        #train_param, model = dp.calibrate(train_param, train_target)       #calibrate sensor data based on ref data
-        #train_param, test_param = dp.polynomia(train_param, 2), dp.polynomia(test_param, 2)
+        #train_param, model = dp.calibrate(train_param, train_target)      #calibrate sensor data before training, not successful
+        train_param, test_param = dp.polynomia(train_param, 2), dp.polynomia(test_param, 2)
 
-        # regressiong
+        # regression
         #reg = ElasticNetCV(cv = c+2, l1_ratio= r/10.0)
         #reg = LinearRegression()
-        reg = LassoCV(normalize = True , max_iter = 8000)
+        #reg = LassoCV(normalize = True , max_iter = 8000)
         #reg= BayesianRidge(normalize = True)
         #reg = KernelRidge(alpha=1.0, degree = 1)
         #reg = SVR(kernel = 'poly')
+        #reg = BaggingRegressor(LassoCV(max_iter=5000, normalize= True), max_samples=0.2)
         #lasso = LassoCV()
         #reg = GradientBoostingRegressor(loss = 'lad', learning_rate = 0.1, n_estimators=200)
-        #reg = BaggingRegressor(LassoCV(max_iter=5000, normalize= True), max_samples=0.2)
+        reg = ARDRegression(normalize = True)
 
-        #weights = dp.weights(train_param, train_target)    # give weights to samples
+        #weights = dp.weights(train_param, train_target)            #add weights for each sample
         #for i in range(len(weights)):
          #   train_param[i] = weights[i]* train_param[i]
         test_target_pred = reg.fit(train_param, train_target).predict(test_param)   # generate prediction results on test set
 
         # estimate the performance of regression
-        #test_target_pred = preprocessing.scale(test_target_pred)
-        #test_target = preprocessing.scale(test_target)
         mae_score = dp.MAE(test_target, test_target_pred)
         mbe_score = dp.MBE(test_target, test_target_pred)
         rmse_score = np.sqrt(metrics.mean_squared_error(test_target, test_target_pred))   # RMSE score
