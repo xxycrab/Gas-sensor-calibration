@@ -98,9 +98,9 @@ for i in range (1,9):
         #reg= BayesianRidge(normalize = True)
         #reg = KernelRidge(alpha=1.0, degree = 1)
         #reg = SVR(kernel = 'poly')
-        #reg = BaggingRegressor(LassoCV(max_iter=5000, normalize= True), max_samples=0.2)
         #lasso = LassoCV()
         #reg = GradientBoostingRegressor(loss = 'lad', learning_rate = 0.1, n_estimators=200)
+        #reg = BaggingRegressor(LassoCV(max_iter=5000, normalize= True), max_samples=0.2)
 
         #weights = dp.weights(train_param, train_target)
         #for i in range(len(weights)):
