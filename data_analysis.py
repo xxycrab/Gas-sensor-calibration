@@ -5,11 +5,15 @@ import matplotlib.pyplot as plt
 import dataprocess as dp
 from sklearn import preprocessing
 import matplotlib.dates as mdate
+from sklearn import neighbors
 
 dataset = pd.read_excel('F:\Python projects\gas-dataset-regression\AirQualityUCI\AirQualityUCI.xlsx')
 dataset['DT'] = pd.to_datetime(dataset['DT'])
 dataset = dataset.set_index('DT')
 dates = dataset.index
+featureset = ['DT','PT08.S1(CO)', 'PT08.S2(NMHC)','T', 'PT08.S3(NOx)', 'PT08.S4(NO2)', 'RH']
+target = ['DT', 'CO(GT)']
+knn = neighbors.KNeighborsClassifier()
 
 '''
 rh_distribution = hist.Kde(rh)

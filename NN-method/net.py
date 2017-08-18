@@ -2,12 +2,13 @@
 
 import random
 import numpy as np
-import function as func
+import function
 import string
+import math
 
-class BPANN(object):
+class BPNN(object):
 
-    def __init__(self, ni, nh, no, funcNo=1, rate=0.1, regularization=0, p=0):
+    def __init__(self, ni, nh, no, func=1, rate=0.1, regularization=0, p=0):
 
         #initialize the number of nodes
         #ni means the number of features of input
@@ -44,12 +45,15 @@ class BPANN(object):
         self.test_error = 0
 
         #choose activation function
-        if funcNo is 1:#sigmoid
-            self.activation = func.sigmoid
-            self.diff_activation = func.diff_sigmoid
-        elif funcNo is 2:
+        if func is 1:#sigmoid
+            self.activation = function.sigmoid
+            self.diff_activation = function.diff_sigmoid
+        elif func is 2:
             self.activation = math.tanh
-            self.diff_activation = func.diff_tanh
+            self.diff_activation = function.diff_tanh
+        elif func is 3:
+            self.activation = function.tansig
+            self.diff_activation = function.diff_tanh
 
         #learning rate
         self.rate = rate
@@ -111,7 +115,7 @@ class BPANN(object):
         self.biasHidden = self.biasHidden - self.rate * self.senHidden
 
     def updateWeight_l1(self):
-        weightHiddenOutput_sgn = map(func.list_sgn,np.ndarray.tolist(self.weightHiddenOutput))
+        weightHiddenOutput_sgn = map(function.list_sgn,np.ndarray.tolist(self.weightHiddenOutput))
         #update w2
         self.weightHiddenOutput = self.weightHiddenOutput - (self.rate*self.weightPenalty/self.numTrain)*np.array(weightHiddenOutput_sgn) - self.rate * np.dot(
             np.transpose(
@@ -121,7 +125,7 @@ class BPANN(object):
         )
 
         #update w1
-        weightInputHidden_sgn = map(func.list_sgn,np.ndarray.tolist(self.weightInputHidden))
+        weightInputHidden_sgn = map(function.list_sgn,np.ndarray.tolist(self.weightInputHidden))
         self.weightInputHidden = self.weightInputHidden - (self.rate*self.weightPenalty/self.numTrain)*np.array(weightInputHidden_sgn) - self.rate * np.dot(
             np.transpose(
                 self.vecInput
@@ -158,10 +162,10 @@ class BPANN(object):
         #update b1
         self.biasHidden = self.biasHidden - self.rate * self.senHidden
 
-    # train one sample ,input is a list
+    # train one sample ,input is an ndarray
     def train(self,input_data,output_data):
-        self.vecInput = np.array([input_data])
-        self.expectOutput = np.array([output_data])
+        self.vecInput = input_data
+        self.expectOutput = output_data
         self.feedForward()
         self.backPropagate()
         if self.re is 0:
@@ -179,8 +183,17 @@ class BPANN(object):
         self.feedForward()
         return np.ndarray.tolist(self.vecOutput[0])
 
+    def predict(self,input_data):
+        size = len(input_data)
+        pred =  np.array([[0] for x in range(size)])
+        for i in range(size):
+            self.vecInput = input_data[i]
+            self.feedForward()
+            pred[i,0] = self.vecOutput[0,0]
+        return pred
+
     def saveModel(self,filename):
-        f = open(filename,'w+')
+        f = open(filename,'a')
         #write weightInputHidden
         for i in range(0,self.numInput):
             for j in range(0,self.numHidden):
@@ -202,7 +215,6 @@ class BPANN(object):
         f.close()
 
     def loadModel(self,filename):
-
         f = open(filename,'r')
 
         #read weightInputHidden

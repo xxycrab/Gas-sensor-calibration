@@ -1,6 +1,7 @@
 #-*-coding:utf8-*-
 
 import math
+import numpy as np
 
 def sigmoid(x):
     try:
@@ -23,3 +24,6 @@ def sgn(x):
 
 def list_sgn(l):
     return map(sgn,l)
+
+def tansig(X):
+    return 2/(1+np.exp(-2*X))-1

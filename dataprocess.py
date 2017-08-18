@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from sklearn import preprocessing
+from math import *
 from sklearn import metrics
 from sklearn.linear_model import LinearRegression
 
@@ -32,21 +33,18 @@ def polynomia(dataset, a= 2):
     return dataset
 
 def MAE(golden, pred):
+    golden, pred = np.reshape(golden, (len(golden),)), np.reshape(pred,(len(pred),))
     score = np.average(abs(golden - pred))
     return score
 
 def MBE(golden, pred):
+    golden, pred = np.reshape(golden, (len(golden),)), np.reshape(pred,(len(pred),))
     score = np.average(golden - pred)
     return score
 
-def baseline(golden, pred):
-    golden_new = preprocessing.scale(golden)
-    pred_new = preprocessing.scale(pred)
-    RMSE =  np.sqrt(metrics.mean_squared_error(golden_new, pred_new))
-    return RMSE
-
 def relativeError(golden, pred):
     RE=0
+    golden, pred = np.reshape(golden, (len(golden),)), np.reshape(pred,(len(pred),))
     for i in range(len(golden)):
         RE = RE + abs(pred[i] - golden[i]) / golden[i]
     return RE/float(len(golden))
@@ -60,25 +58,15 @@ def sort(featureset, target, pivot):
     featureset, target = data[featureset.columns], data[target.columns]
     return featureset, target
 
-def pretraining(X, y):
-    linear = LinearRegression()
-    model = linear.fit(X,y)
-    pred = model.predict(X)
-    return pred, model
-
-def weights(X,y):
-    weights = []
-    pre = pretraining(X,y)
-    for i in range(len(y)):
-        weights.append(np.exp(-abs((y[i] - pre[i]))/0.1))
-    return weights
-
-def calibrate(X,y):
-    X_new = X[:,1]
-    y_new = y.copy().T
-    y_new = np.reshape(y_new,(len(y_new),1))
-
-    calibration, model = pretraining(y_new, X_new)
-    for i in range(len(calibration)):
-        X[i, 1] = calibration[i]
-    return X, model
+def confidence_interval(X, y_pred):
+    y_interval = np.zeros([len(X),2])
+    y_std = np.std(y_pred, ddof = 1)
+    #k = X.shape[0]
+    #n = len(X)
+    X_mat, y_pred_mat = np.matrix(X),np.matrix(y_pred)
+    XTX = X_mat.T * X_mat
+    for i in range(len(y_pred)):
+        x_var = np.sqrt(X_mat[i,:] * (XTX ** -1) * (X_mat[i,:].T))
+        interval = y_std * x_var[0,0] * 1.96
+        y_interval[i,0], y_interval[i,1] = y_pred[i]-interval, y_pred[i]+interval
+    return y_interval
