@@ -5,7 +5,8 @@ from math import *
 from sklearn import metrics
 from sklearn.linear_model import LinearRegression
 
-def features(dataset, featureset):
+"""given the raw dataset and the features' name in list type, return a dataframe consisting of thess features"""
+def get_features(dataset, featureset):
     for feature in featureset:
         if not (feature in dataset.columns.tolist()):
             print feature,"is not in dataset"
@@ -13,12 +14,12 @@ def features(dataset, featureset):
 
     return dataset[featureset]
 
-def target(dataset, target):
-    #if not (target in dataset):
-     #   print target ,"is not in dataset"
-      #  return
+"""given the raw dataset and the target name in list type, return a dataframe consisting of traning target"""
+def get_target(dataset, target):
     return dataset[target]
 
+"""replace the missing data with numpy's mark(np.nan) for missing data"""
+"""in the UCI dataset, the missing data are marked as -200.00"""
 def delMissing(featureset, target):
     if not (type(target) is 'DataFrame'):
         target = pd.DataFrame(target)
@@ -27,21 +28,26 @@ def delMissing(featureset, target):
     featureset, target = data[featureset.columns], data[target.columns]
     return featureset, target
 
+"""given dataset and exponent, return polynomial"""
 def polynomia(dataset, a= 2):
     poly = preprocessing.PolynomialFeatures(a)
     dataset = poly.fit_transform(dataset)
+    print poly.get_feature_names()
     return dataset
 
+"""given golden data and prediction results, calculate mean absolute error"""
 def MAE(golden, pred):
     golden, pred = np.reshape(golden, (len(golden),)), np.reshape(pred,(len(pred),))
     score = np.average(abs(golden - pred))
     return score
 
+"""given golden data and prediction results, calculate mean bias error"""
 def MBE(golden, pred):
     golden, pred = np.reshape(golden, (len(golden),)), np.reshape(pred,(len(pred),))
     score = np.average(golden - pred)
     return score
 
+"""given golden data and prediction results, calculate mean relative error"""
 def relativeError(golden, pred):
     RE=0
     golden, pred = np.reshape(golden, (len(golden),)), np.reshape(pred,(len(pred),))
@@ -49,6 +55,8 @@ def relativeError(golden, pred):
         RE = RE + abs(pred[i] - golden[i]) / golden[i]
     return RE/float(len(golden))
 
+"""given learning samples, target and the pivot, sort the whole dataset upon the pivot"""
+"""the pivot should be the column name of the dataset(dataframe type)"""
 def sort(featureset, target, pivot):
     if not (type(target) is 'DataFrame'):
         target = pd.DataFrame(target)
@@ -58,6 +66,7 @@ def sort(featureset, target, pivot):
     featureset, target = data[featureset.columns], data[target.columns]
     return featureset, target
 
+"""given sample sets and prediction results, calculate the confidence interval"""
 def confidence_interval(X, y_pred):
     y_interval = np.zeros([len(X),2])
     y_std = np.std(y_pred, ddof = 1)

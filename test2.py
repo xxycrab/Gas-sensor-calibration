@@ -36,9 +36,6 @@ target_CO = target_CO.set_index('DT')
 feature_CO, target_CO = dp.delMissing(feature_CO, target_CO)   #deal with missing data
 #feature_CO, target_CO = dp.sort(feature_CO, target_CO, 'RH')   #sort by RH
 
-skf = sel.KFold(n_splits=5)
-MAE = MBE = RMSE = RE = 0
-res = []
 # print dp.baseline(taarget, reg_feature_CO['PT08.S1(CO)'])
 '''
 param = np.array(feature_CO)

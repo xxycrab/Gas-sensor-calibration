@@ -1,145 +1,103 @@
-from sklearn import decomposition
-import sys
-import keras
+import pandas as pd
 import numpy as np
-from keras.models import Sequential
-from keras.layers.core import Dense, Dropout, Activation, Flatten
-from keras.optimizers import SGD
-from keras import regularizers
-from keras.layers import advanced_activations
-from keras.optimizers import RMSprop
-from keras.utils import np_utils
-from sklearn import preprocessing
-from keras.utils.generic_utils import get_custom_objects
-from keras.layers import Merge
+import sklearn.model_selection as sel
+from sklearn import metrics
+import dataprocess as dp
+from NN_class import *
+import matplotlib.pyplot as plt
+import warnings
+from read_data import *
+from sklearn.preprocessing import StandardScaler
 
-def tansig(X):
-    return 2/(1+np.exp(-2*X))-1
+warnings.filterwarnings('ignore')
 
-get_custom_objects().update({'custom_activation': Activation(tansig)})
+def DNN(mode = 1, splits = 5.0):
+    feature, target = data_read()  #read in dataset
+    skf = sel.KFold(n_splits= splits)  #splits of cross-validation, default is 5
+    MAE = MBE = RMSE = RE = 0  #record scores
+    param = np.array(feature)  #change feature matrix into ndarray
+    #param = dp.polynomia(feature, a=2)
+    target = np.array(target)   #change target vector into ndarray
+    target = np.reshape(target, (len(target),))  # reshape from (dataser_size , 1) into (daraset_size, )
+    
+    idim, hiddim, odim = param.shape[1], [[20, 10], [5, 5], [7, 7], [15, 15], [20, 20]], 1 #assign input dimesion,
+    epochs = [200, 500, 1000, 3000, 5000]  #learning epochs
+    activations = [[tansig, 'relu'], [tansig, tansig]]# decide activation function for each layer, should be a list
+                                                        # if no activation function, assign 'None' for that layer
+    for h in hiddim:
+        for e in epochs:
+            for act in activations:
+                for i in range(10):
+                    for train_index, test_index in skf.split(param, target):
+                        if mode == 2:  # cross-validation mode, training and test set are divided randomly by KFold
+                            train_param, test_param = param[train_index], param[test_index]
+                            train_target, test_target = target[train_index], target[test_index]
+                        elif mode == 1: # time-series mode
+                            train_param, test_param = param[0:2000, :], param[2000:3000, :]
+                            train_target, test_target = target[0:2000], target[2000:3000]
+                        std, avg = np.std(test_target), np.mean(test_target)   # calculate standard diviation and mean value for renormalization
+                        scale = StandardScaler() # normalizer, normalize on standard diviation
+                        train_param, test_param, train_target = scale.fit_transform(train_param), scale.fit_transform(
+                            test_param), scale.fit_transform(train_target)  # normalization on sample features and training target
 
-class DNN:
-    def __init__(self, rate=0, hw=5):
-        self.model = Sequential()
-        self.dropout_rate = rate
-        self.hidden_width = hw
+                        dnn = DNN()  #initialize a BPNN model
+                        dnn.build(input_dim=idim, hidden_dim=h, output_dim=odim, activations=act, drop_rate=0, \
+                                   kernel_regularizer=None) #assign input and output dimension, hidden layer structure,
+                                                            #activation functions, dropout rate, regularizers
+                        dnn.fit(train_param, train_target, batch_size=len(train_target) ,epochs=e) # fit the model
+                        dnn.Model.save("model.h5") # save the model into a hdf5 file
+                        # dnn.Model.save_weights("model_weights.h5")
 
-    def fit(self, feature, target, epochs = 4000):
-        feature = preprocessing.scale(feature)
-        target = preprocessing.scale(target)
+                        test_target_pred = dnn.predict(test_param)  #generate prediction results(normalized)
+                        test_target_pred = test_target_pred * std + avg  #renormalization
 
-        model = self.model
-        hw = self.hidden_width
-        ndim = len(feature[0])
-        ldim = 1
-        batch_size = len(feature)
+                        """evaluate the results"""
+                        rmse_score = np.sqrt(metrics.mean_squared_error(test_target, test_target_pred))
+                        mae_score = dp.MAE(test_target, test_target_pred)
+                        mbe_score = dp.MBE(test_target, test_target_pred)
+                        relative_error = dp.relativeError(test_target, test_target_pred)
 
-        model.add(Dense(units = hw, input_dim= ndim, activation=tansig, init='normal',use_bias=True, bias_initializer = 'zeros'))
-        model.add(Dense(units= hw, activation=tansig, init='normal',use_bias=True, bias_initializer = 'zeros',
-                        kernel_regularizer=regularizers.l2(0.0)))
-        model.add(Dense(ldim))
+                        if mode ==1 :
+                            print "hiddim:", h, "epoch:", e, "activation:", act
+                            print "scores:", rmse_score, mae_score, mbe_score, relative_error
+                            break
+                        elif mode == 2:
+                            MAE = MAE + mae_score
+                            MBE = MBE + mbe_score
+                            RMSE = RMSE + rmse_score
+                            RE = RE + relative_error
 
-        sgd = SGD(lr=0.05, decay=1e-6, momentum=0.9, nesterov=True)
-        model.compile(loss='mean_squared_error', optimizer=sgd, metrics=['accuracy'])
-        model.fit(feature, target, epochs=epochs, batch_size= batch_size, verbose=0)
-        self.model = model
-        return model
+                    if mode == 2:
+                        print "hiddim:", h, "epoch:", e, "activation:", act
+                        print "scores:", RMSE / splits, MAE / splits, MBE / splits, RE / splits
+                    break
+                break
+            break
+        break
+    
+    CI = dp.confidence_interval(test_param, test_target_pred)    #calculate confidence intervals
+    err = 0
+    err_value = []
+    for i in range(len(test_target)): #count number of golden data that are not within confidence intervals
+        if test_target[i] < CI[i, 0] or test_target[i] > CI[i, 1]:
+            err = err + 1
+            err_value.append(test_target[i])
+    print err, len(test_target)
 
-    def predict(self, testset):
-        testset = preprocessing.scale(testset)
-        model = self.model
-        pred = model.predict(testset)
-        return pred
+    """draw plots"""
+    x = range(len(test_target))
+    test_target_pred=np.reshape(test_target_pred,(len(test_target_pred),))
+    y = np.dstack((test_target, test_target_pred, CI[:, 0], CI[:, 1]))[0]
+    #y = y[np.lexsort(y[:, ::-1].T)]
+    y1 = np.array(y[:, 0])  # golden
+    y2 = np.array(y[:, 1])  # predict
+    y3 = np.array(y[:, 2])  # low
+    y4 = np.array(y[:, 3])  # high
+    plt.plot(x, y1, color='red', lw=1)
+    plt.plot(x, y2, color='black', lw=1)
+    plt.plot(x, y3, color='blue', lw=0.5, linestyle='--')
+    plt.plot(x, y4, color='blue', lw=0.5, linestyle='--')
+    plt.fill_between(x, y3, y4, color='blue', alpha=0.25)
+    plt.show()
 
-class TDNN:
-    def __init__(self, filter_size = 12):
-        self.model = Sequential()
-        self.TDL = filter_size
-
-    def TDdata(self, data):
-        TDdata = data[0:len(data)-(self.TDL-1),:]
-        for i in range(1, self.TDL):
-            TDdata = np.concatenate((TDdata, data[i:len(data)-(self.TDL-1)+i,: ]), axis=1)
-        return TDdata
-
-    def build(self, input_dim, hidden_dim, output_dim, activations):
-        hw = hidden_dim
-        idim =input_dim * self.TDL
-        odim = output_dim
-        act = activations
-
-        for i in range(len(hw)):
-            if i == 0:
-                self.model.add(Dense(input_dim=idim, units=hw[i], activation=act[i], init='normal'))
-            else:
-                self.model.add(Dense(units=hw[i], activation=act[i], init='normal'))
-        self.model.add(Dense(units=odim, activation='linear', init='normal'))
-
-        sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-        self.model.compile(loss='mean_squared_error', optimizer=sgd, metrics=['accuracy'])
-        return self.model
-
-    def fit(self, feature, target, batch_size, epochs = 1000):
-        model = self.model
-        feature = self.TDdata(feature)
-        target = target[self.TDL-1:]
-        model.fit(feature, target, epochs=epochs, batch_size= batch_size, verbose=0)
-        self.model = model
-        return model
-
-    def predict(self, testset):
-        testset = self.TDdata(testset)
-        model = self.model
-        pred = model.predict(testset)
-        return pred
-
-class Multi_TDNN:
-    def __init__(self, filter_sizes=[3,6,9]):
-        self.TDL = filter_sizes
-
-    def TDdata(self, data, t):
-        TDdata = data[0:len(data) - (t - 1), :]
-        for i in range(1, t):
-            TDdata = np.concatenate((TDdata, data[i:len(data) - (t - 1) + i, :]), axis=1)
-        return TDdata
-
-    def build(self, input_dim, hidden_dim, output_dim, activations):
-        hw = hidden_dim
-        odim = output_dim
-        idim = input_dim
-        act = activations
-        models = []
-
-        for t in self.TDL:
-            models.append(Sequential())
-            k = self.TDL.index(t)
-            for i in range(len(hw)):
-                if i == 0:
-                    models[k].add(Dense(input_dim=idim*t, units=hw[i], activation=act[i], init='normal'))
-                else:
-                    models[k].add(Dense(units=hw[i], activation=act[i], init='normal'))
-            models[k].add(Dense(units=odim, activation='linear', init='normal'))
-
-        self.Model = Sequential()
-        self.Model.add(Merge(models, mode='concat'))
-        self.Model.add(Dense(units=odim, activation='linear'))
-
-        sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
-        self.Model.compile(loss='mean_squared_error', optimizer=sgd, metrics=['accuracy'])
-        return self.Model
-
-    def fit(self, feature, target, batch_size, epochs=1000):
-        Features = []
-        for t in self.TDL:
-            Features.append(self.TDdata(feature, t = t)[max(self.TDL)-t:,:])
-
-        target = target[max(self.TDL)-1:]
-        self.Model.fit(Features, target, epochs=epochs, batch_size=batch_size, verbose=0)
-        return self.Model
-
-    def predict(self, testset):
-        Test = []
-        for t in self.TDL:
-            Test.append(self.TDdata(testset, t=t)[max(self.TDL)-t:,:])
-        pred = self.Model.predict(Test)
-        return pred
+DNN(mode = 1)
